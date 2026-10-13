@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_task_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <!-- Quick Complete Checkbox -->
+    <ImageView
+        android:id="@+id/btn_widget_check"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:src="@drawable/ic_widget_check_circle"
+        android:contentDescription="@string/widget_complete_task"
+        android:scaleType="centerInside"
+        android:layout_marginEnd="10dp" />
+
+    <!-- Task Information -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/tv_widget_item_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_sample_title"
+            android:textColor="#E8EAED"
+            android:textSize="13sp"
+            android:textStyle="normal"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Tags Row: Priority, Due Date, Subtasks -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="3dp">
+
+            <!-- Priority Badge -->
+            <TextView
+                android:id="@+id/tv_widget_item_priority"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_priority_high"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#FB7185"
+                android:background="@drawable/widget_badge_high"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Due Date Badge -->
+            <TextView
+                android:id="@+id/tv_widget_item_due"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_sample_due"
+                android:textSize="11sp"
+                android:textColor="#8AB4F8"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Subtasks Badge -->
+            <TextView
+                android:id="@+id/tv_widget_item_subtasks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_sample_subtasks"
+                android:textSize="11sp"
+                android:textColor="#9AA0A6" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

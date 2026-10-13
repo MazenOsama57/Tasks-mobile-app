@@ -1,0 +1,6 @@
+{
+  "name": "Tasks",
+  "description": "Native offline to-do list app with local Room persistence, lists, due dates, priority levels, recurring schedules, Pomodoro focus timer, productivity streaks, custom themes, subtasks, and daily reminders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

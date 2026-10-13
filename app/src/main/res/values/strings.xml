@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Tasks</string>
+    <string name="widget_title">Today\'s Tasks</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_add_task">Add task</string>
+    <string name="widget_refresh">Refresh widget</string>
+    <string name="widget_empty_title">All caught up for today!</string>
+    <string name="widget_empty_subtitle">Tap + to add a task</string>
+    <string name="widget_complete_task">Complete task</string>
+    <string name="widget_sample_title">Task Title</string>
+    <string name="widget_priority_high">HIGH</string>
+    <string name="widget_sample_due">Today</string>
+    <string name="widget_sample_subtasks">1 of 2 subtasks</string>
+    <string name="focus_timer_title">Focus Timer</string>
+    <string name="productivity_analytics_title">Productivity &amp; Streaks</string>
+    <string name="start_focus_session">Start Focus Session</string>
+    <string name="streak_days_format">%1$d Day Streak</string>
+</resources>

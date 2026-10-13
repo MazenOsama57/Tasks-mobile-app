@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <!-- Header Row -->
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_widget_header_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_title"
+                android:textColor="#8AB4F8"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_widget_summary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_loading"
+                android:textColor="#AAAAAA"
+                android:textSize="11sp"
+                android:paddingTop="2dp" />
+        </LinearLayout>
+
+        <!-- Quick Add Button (+) -->
+        <ImageButton
+            android:id="@+id/btn_widget_add_task"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/widget_add_btn"
+            android:src="@drawable/ic_widget_add"
+            android:contentDescription="@string/widget_add_task"
+            android:scaleType="centerInside" />
+
+        <!-- Refresh Button -->
+        <ImageButton
+            android:id="@+id/btn_widget_refresh"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_add_btn"
+            android:src="@drawable/ic_widget_refresh"
+            android:contentDescription="@string/widget_refresh"
+            android:scaleType="centerInside" />
+    </LinearLayout>
+
+    <!-- Daily Progress Bar -->
+    <ProgressBar
+        android:id="@+id/widget_progress_bar"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:progress="0"
+        android:max="100" />
+
+    <!-- Divider -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@drawable/widget_divider"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp"
+        android:contentDescription="@null" />
+
+    <!-- Tasks List View -->
+    <ListView
+        android:id="@+id/widget_tasks_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@drawable/widget_divider"
+        android:dividerHeight="1dp" />
+
+    <!-- Empty View (shown when list is empty) -->
+    <LinearLayout
+        android:id="@+id/widget_empty_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tv_widget_empty_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_empty_title"
+            android:textColor="#E8EAED"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_empty_subtitle"
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:paddingTop="4dp" />
+    </LinearLayout>
+</LinearLayout>

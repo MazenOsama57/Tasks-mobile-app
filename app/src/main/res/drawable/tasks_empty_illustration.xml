@@ -1,0 +1,99 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Soft background glow circle -->
+    <path
+        android:fillColor="#151A73E8"
+        android:pathData="M100,100m-80,0a80,80 0,1 1,160 0a80,80 0,1 1,-160 0" />
+
+    <!-- Clipboard Shadow -->
+    <path
+        android:fillColor="#1E000000"
+        android:pathData="M56,44 L148,44 A8,8 0,0 1 156,52 L156,168 A8,8 0,0 1 148,176 L56,176 A8,8 0,0 1 48,168 L48,52 A8,8 0,0 1 56,44 Z" />
+
+    <!-- Clipboard Body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,40 L146,40 A8,8 0,0 1 154,48 L154,164 A8,8 0,0 1 146,172 L54,172 A8,8 0,0 1 46,164 L46,48 A8,8 0,0 1 54,40 Z" />
+
+    <!-- Clipboard Top Header Accent -->
+    <path
+        android:fillColor="#E8F0FE"
+        android:pathData="M46,48 A8,8 0,0 1 54,40 L146,40 A8,8 0,0 1 154,48 L154,64 L46,64 Z" />
+
+    <!-- Clipboard Metal Clip -->
+    <path
+        android:fillColor="#BDC1C6"
+        android:pathData="M78,32 L122,32 A4,4 0,0 1 126,36 L126,46 A2,2 0,0 1 124,48 L76,48 A2,2 0,0 1 74,46 L74,36 A4,4 0,0 1 78,32 Z" />
+    <path
+        android:fillColor="#1A73E8"
+        android:pathData="M88,38 L112,38 A3,3 0,0 1 115,41 L115,43 L85,43 L85,41 A3,3 0,0 1 88,38 Z" />
+
+    <!-- Checklist Item 1: Checked Circle & Checkmark -->
+    <path
+        android:fillColor="#34A853"
+        android:pathData="M66,82m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M62.5,82 L65,84.5 L69.5,79.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Line 1 Text Bar -->
+    <path
+        android:fillColor="#1A73E8"
+        android:pathData="M82,79 L134,79 A3,3 0,0 1 137,82 L137,82 A3,3 0,0 1 134,85 L82,85 A3,3 0,0 1 79,82 L79,82 A3,3 0,0 1 82,79 Z" />
+
+    <!-- Checklist Item 2: Checked Circle & Checkmark -->
+    <path
+        android:fillColor="#1A73E8"
+        android:pathData="M66,108m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M62.5,108 L65,110.5 L69.5,105.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Line 2 Text Bar -->
+    <path
+        android:fillColor="#BDC1C6"
+        android:pathData="M82,105 L126,105 A3,3 0,0 1 129,108 L129,108 A3,3 0,0 1 126,111 L82,111 A3,3 0,0 1 79,108 L79,108 A3,3 0,0 1 82,105 Z" />
+
+    <!-- Checklist Item 3: Empty Unchecked Circle -->
+    <path
+        android:fillColor="#F1F3F4"
+        android:strokeColor="#9AA0A6"
+        android:strokeWidth="2"
+        android:pathData="M66,134m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <!-- Line 3 Text Bar -->
+    <path
+        android:fillColor="#E8EAED"
+        android:pathData="M82,131 L118,131 A3,3 0,0 1 121,134 L121,134 A3,3 0,0 1 118,137 L82,137 A3,3 0,0 1 79,134 L79,134 A3,3 0,0 1 82,131 Z" />
+
+    <!-- Decorative Sparkle Top Right -->
+    <path
+        android:fillColor="#FBBC04"
+        android:pathData="M152,38 L155,46 L163,49 L155,52 L152,60 L149,52 L141,49 L149,46 Z" />
+
+    <!-- Decorative Small Sparkle Bottom Left -->
+    <path
+        android:fillColor="#4285F4"
+        android:pathData="M38,130 L40,135 L45,137 L40,139 L38,144 L36,139 L31,137 L36,135 Z" />
+
+    <!-- Floating Checkmark Circle Bottom Right -->
+    <path
+        android:fillColor="#34A853"
+        android:pathData="M152,148m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M146,148 L150,152 L158,144"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
