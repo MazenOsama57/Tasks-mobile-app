@@ -48,24 +48,11 @@ fun HabitsScreen(
 
     val totalStreak = habits.maxOfOrNull { it.calculateCurrentStreak() } ?: 0
 
-    Scaffold(
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddHabitClick,
-                icon = { Icon(Icons.Filled.Add, contentDescription = "Add Habit") },
-                text = { Text("New Habit", fontWeight = FontWeight.SemiBold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = CircleShape,
-                modifier = Modifier.testTag("add_habit_fab")
-            )
-        },
-        modifier = modifier
-    ) { paddingValues ->
+    Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             contentPadding = PaddingValues(
-                top = paddingValues.calculateTopPadding() + 16.dp,
-                bottom = paddingValues.calculateBottomPadding() + 88.dp,
+                top = 16.dp,
+                bottom = 96.dp,
                 start = 16.dp,
                 end = 16.dp
             ),

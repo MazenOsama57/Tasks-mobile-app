@@ -57,6 +57,7 @@ import com.example.ui.workflows.AppBottomTab
 import com.example.ui.workflows.WorkflowsScreen
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
     viewModel: TaskViewModel,
@@ -115,52 +116,98 @@ fun TasksScreen(
 
     Scaffold(
         topBar = {
-            val visibleTasks = when {
-                uiState.isCompletedView -> uiState.completedTasks
-                uiState.isUpcomingRecurringView -> uiState.upcomingRecurringTasks
-                else -> uiState.activeTasks
-            }
+            when (uiState.currentBottomTab) {
+                AppBottomTab.TASKS -> {
+                    val visibleTasks = when {
+                        uiState.isCompletedView -> uiState.completedTasks
+                        uiState.isUpcomingRecurringView -> uiState.upcomingRecurringTasks
+                        else -> uiState.activeTasks
+                    }
 
-            TasksTopBar(
-                currentListName = uiState.currentListName,
-                lists = uiState.lists,
-                selectedListId = uiState.selectedListId,
-                isStarredView = uiState.isStarredView,
-                isCompletedView = uiState.isCompletedView,
-                isUpcomingRecurringView = uiState.isUpcomingRecurringView,
-                isCalendarView = uiState.isCalendarView,
-                sortOrder = uiState.sortOrder,
-                isSearching = uiState.isSearching,
-                searchQuery = uiState.searchQuery,
-                onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                onToggleSearch = { viewModel.setSearching(it) },
-                onSelectList = { viewModel.selectList(it) },
-                onSelectStarred = { viewModel.selectStarredView() },
-                onSelectCompleted = { viewModel.selectCompletedView() },
-                onSelectUpcomingRecurring = { viewModel.selectUpcomingRecurringView() },
-                onSelectCalendarView = { viewModel.selectCalendarView() },
-                onOpenCreateList = { viewModel.openCreateListDialog() },
-                onOpenRenameList = { viewModel.openRenameListDialog(it) },
-                onOpenDeleteList = { viewModel.openDeleteListDialog(it) },
-                onOpenSortDialog = { viewModel.toggleSortDialog(true) },
-                onOpenThemeDialog = { viewModel.toggleThemeDialog(true) },
-                onOpenAutoClearDialog = { viewModel.toggleAutoClearDialog(true) },
-                onOpenReminderDialog = { viewModel.openReminderDialog() },
-                onOpenSettingsDialog = { viewModel.openSettingsDialog() },
-                onOpenFocusTimer = { viewModel.openFocusTimer() },
-                onOpenAnalytics = { viewModel.openAnalyticsDialog() },
-                onClearCompleted = { viewModel.clearCompletedTasks() },
-                // Multi-select / Batch selection mode
-                isBatchSelectionMode = uiState.isBatchSelectionMode,
-                selectedTaskCount = uiState.selectedTaskIdsForBatch.size,
-                onClearBatchSelection = { viewModel.clearBatchSelection() },
-                onSelectAllBatch = {
-                    val allVisibleIds = visibleTasks.map { it.task.id }
-                    viewModel.selectAllTasks(allVisibleIds)
-                },
-                onMoveBatch = { viewModel.openMoveTasksDialog() },
-                onDeleteBatch = { viewModel.deleteSelectedTasks() }
-            )
+                    TasksTopBar(
+                        currentListName = uiState.currentListName,
+                        lists = uiState.lists,
+                        selectedListId = uiState.selectedListId,
+                        isStarredView = uiState.isStarredView,
+                        isCompletedView = uiState.isCompletedView,
+                        isUpcomingRecurringView = uiState.isUpcomingRecurringView,
+                        isCalendarView = uiState.isCalendarView,
+                        sortOrder = uiState.sortOrder,
+                        isSearching = uiState.isSearching,
+                        searchQuery = uiState.searchQuery,
+                        onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                        onToggleSearch = { viewModel.setSearching(it) },
+                        onSelectList = { viewModel.selectList(it) },
+                        onSelectStarred = { viewModel.selectStarredView() },
+                        onSelectCompleted = { viewModel.selectCompletedView() },
+                        onSelectUpcomingRecurring = { viewModel.selectUpcomingRecurringView() },
+                        onSelectCalendarView = { viewModel.selectCalendarView() },
+                        onOpenCreateList = { viewModel.openCreateListDialog() },
+                        onOpenRenameList = { viewModel.openRenameListDialog(it) },
+                        onOpenDeleteList = { viewModel.openDeleteListDialog(it) },
+                        onOpenSortDialog = { viewModel.toggleSortDialog(true) },
+                        onOpenThemeDialog = { viewModel.toggleThemeDialog(true) },
+                        onOpenAutoClearDialog = { viewModel.toggleAutoClearDialog(true) },
+                        onOpenReminderDialog = { viewModel.openReminderDialog() },
+                        onOpenSettingsDialog = { viewModel.openSettingsDialog() },
+                        onOpenFocusTimer = { viewModel.openFocusTimer() },
+                        onOpenAnalytics = { viewModel.openAnalyticsDialog() },
+                        onClearCompleted = { viewModel.clearCompletedTasks() },
+                        // Multi-select / Batch selection mode
+                        isBatchSelectionMode = uiState.isBatchSelectionMode,
+                        selectedTaskCount = uiState.selectedTaskIdsForBatch.size,
+                        onClearBatchSelection = { viewModel.clearBatchSelection() },
+                        onSelectAllBatch = {
+                            val allVisibleIds = visibleTasks.map { it.task.id }
+                            viewModel.selectAllTasks(allVisibleIds)
+                        },
+                        onMoveBatch = { viewModel.openMoveTasksDialog() },
+                        onDeleteBatch = { viewModel.deleteSelectedTasks() }
+                    )
+                }
+                AppBottomTab.WORKFLOWS -> {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = "Workflows",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                }
+                AppBottomTab.HABITS -> {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = "Habits",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                }
+                AppBottomTab.ACHIEVEMENTS -> {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = "Badges & Stats",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                }
+            }
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
@@ -169,58 +216,102 @@ fun TasksScreen(
             if (!uiState.isBatchSelectionMode) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp,
+                    tonalElevation = 4.dp,
                     modifier = Modifier.testTag("app_bottom_nav_bar")
                 ) {
                     NavigationBarItem(
                         selected = uiState.currentBottomTab == AppBottomTab.TASKS,
                         onClick = { viewModel.selectBottomTab(AppBottomTab.TASKS) },
+                        alwaysShowLabel = true,
                         icon = {
                             Icon(
                                 imageVector = if (uiState.currentBottomTab == AppBottomTab.TASKS) Icons.Filled.TaskAlt else Icons.Outlined.TaskAlt,
-                                contentDescription = "Tasks"
+                                contentDescription = "Tasks",
+                                modifier = Modifier.size(24.dp)
                             )
                         },
-                        label = { Text("Tasks") },
+                        label = {
+                            Text(
+                                text = "Tasks",
+                                maxLines = 1,
+                                softWrap = false,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
                         modifier = Modifier.testTag("tab_tasks")
                     )
 
                     NavigationBarItem(
                         selected = uiState.currentBottomTab == AppBottomTab.WORKFLOWS,
                         onClick = { viewModel.selectBottomTab(AppBottomTab.WORKFLOWS) },
+                        alwaysShowLabel = true,
                         icon = {
                             Icon(
                                 imageVector = if (uiState.currentBottomTab == AppBottomTab.WORKFLOWS) Icons.Filled.Dashboard else Icons.Outlined.Dashboard,
-                                contentDescription = "Workflows"
+                                contentDescription = "Workflows",
+                                modifier = Modifier.size(24.dp)
                             )
                         },
-                        label = { Text("Matrix & Kanban") },
+                        label = {
+                            Text(
+                                text = "Workflows",
+                                maxLines = 1,
+                                softWrap = false,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
                         modifier = Modifier.testTag("tab_workflows")
                     )
 
                     NavigationBarItem(
                         selected = uiState.currentBottomTab == AppBottomTab.HABITS,
                         onClick = { viewModel.selectBottomTab(AppBottomTab.HABITS) },
+                        alwaysShowLabel = true,
                         icon = {
                             Icon(
                                 imageVector = if (uiState.currentBottomTab == AppBottomTab.HABITS) Icons.Filled.SelfImprovement else Icons.Outlined.SelfImprovement,
-                                contentDescription = "Habits"
+                                contentDescription = "Habits",
+                                modifier = Modifier.size(24.dp)
                             )
                         },
-                        label = { Text("Habits") },
+                        label = {
+                            Text(
+                                text = "Habits",
+                                maxLines = 1,
+                                softWrap = false,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
                         modifier = Modifier.testTag("tab_habits")
                     )
 
                     NavigationBarItem(
                         selected = uiState.currentBottomTab == AppBottomTab.ACHIEVEMENTS,
                         onClick = { viewModel.selectBottomTab(AppBottomTab.ACHIEVEMENTS) },
+                        alwaysShowLabel = true,
                         icon = {
                             Icon(
                                 imageVector = if (uiState.currentBottomTab == AppBottomTab.ACHIEVEMENTS) Icons.Filled.EmojiEvents else Icons.Outlined.EmojiEvents,
-                                contentDescription = "Badges"
+                                contentDescription = "Badges",
+                                modifier = Modifier.size(24.dp)
                             )
                         },
-                        label = { Text("Level & Badges") },
+                        label = {
+                            Text(
+                                text = "Badges",
+                                maxLines = 1,
+                                softWrap = false,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
                         modifier = Modifier.testTag("tab_achievements")
                     )
                 }
@@ -230,8 +321,7 @@ fun TasksScreen(
             if (!uiState.isBatchSelectionMode) {
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (uiState.pomodoroTimerState.isRunning) {
                         val mins = uiState.pomodoroTimerState.secondsRemaining / 60
@@ -285,7 +375,7 @@ fun TasksScreen(
                             shape = CircleShape,
                             modifier = Modifier.testTag("add_task_fab")
                         )
-                    } else if (uiState.currentBottomTab == AppBottomTab.HABITS) {
+                    } else if (uiState.currentBottomTab == AppBottomTab.HABITS && uiState.habits.isNotEmpty()) {
                         ExtendedFloatingActionButton(
                             onClick = {
                                 habitToEdit = null
@@ -1251,23 +1341,5 @@ fun TasksEmptyState(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
-
-        if (!isSearching && !isCompletedView) {
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(
-                onClick = onAddTask,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.testTag("empty_state_add_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Create a task")
-            }
-        }
     }
 }

@@ -75,7 +75,7 @@ fun WorkflowsScreen(
             Tab(
                 selected = viewMode == WorkflowViewMode.EISENHOWER_MATRIX,
                 onClick = { viewMode = WorkflowViewMode.EISENHOWER_MATRIX },
-                text = { Text("Eisenhower Matrix (2×2)", fontWeight = FontWeight.SemiBold) },
+                text = { Text("Eisenhower Matrix", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 icon = {
                     Icon(
                         imageVector = Icons.Filled.GridView,
@@ -88,7 +88,7 @@ fun WorkflowsScreen(
             Tab(
                 selected = viewMode == WorkflowViewMode.KANBAN_BOARD,
                 onClick = { viewMode = WorkflowViewMode.KANBAN_BOARD },
-                text = { Text("Kanban Board", fontWeight = FontWeight.SemiBold) },
+                text = { Text("Kanban Board", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 icon = {
                     Icon(
                         imageVector = Icons.Filled.ViewColumn,

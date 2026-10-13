@@ -1,176 +1,49 @@
-# Implementation Plan: Advanced Productivity Suite & Gamified Workflows
+# Implementation Plan: Advanced Productivity Suite & Compatibility Report
 
 ## Executive Summary
-Following the competitive benchmark against leading productivity platforms (**Todoist**, **TickTick**, **Things 3**, and **Habitica**), this plan introduces five major power-user features into **Tasks**, structured under an intuitive bottom navigation system:
-1. **Habit Tracking & Daily Routines with Streaks**
-2. **Eisenhower Matrix 2×2 Decision Grid**
-3. **Visual Kanban Board View**
-4. **Smart Natural Language Quick-Add Parser**
-5. **Gamified Achievement Badges & Productivity XP Levels**
-
-All new workflows are integrated cleanly with local offline Room persistence, existing task lists, the Pomodoro focus timer, and Material 3 design principles.
+This document covers the latest refinements and technical compatibility analysis for **Tasks**:
+1. **OS Compatibility & Android 5/6 Support**: Android 6.0 Marshmallow (API 23) is verified and fully supported. Android 5.0 (API 21) was tested; modern AndroidX core libraries (`androidx.core:core-ktx:1.18.0` and Compose BOM) have officially deprecated and raised their minimum required SDK to API 23 (Android 6.0). Thus, **Android 6.0 (API 23)** is the lowest possible OS version supported by modern Jetpack Compose.
+2. **Top Navigation Scoping**: Scoped `TasksTopBar` (search, list dropdown, sort, and list filters) exclusively to the Tasks screen. Dedicated clean `CenterAlignedTopAppBar` headers are rendered for Workflows, Habits, and Badges.
+3. **Bottom Navigation Single-Level Alignment**: Configured all four bottom navigation destinations (`Tasks`, `Workflows`, `Habits`, `Badges`) with `alwaysShowLabel = true`, 24.dp icon sizing, and single-line centered labels (`maxLines = 1`, `softWrap = false`, `textAlign = TextAlign.Center`, `fillMaxWidth`) so all icons and labels sit on the exact same horizontal level.
+4. **Eliminated Overlaying / Duplicate Add Actions**: Removed duplicate overlapping FABs. The "New task" FAB is displayed exclusively on the Tasks screen. On the Habits screen, the corner FAB is shown only when habits exist, preventing collision with the empty state creation button. No "New task" FAB appears on Workflows or Achievements.
 
 ---
 
-## Architecture & Navigation Structure
+## Technical Compatibility Analysis: Android Versions
 
-### App Navigation Hub
-Transition from single-screen modal navigation to a cohesive **Material 3 Navigation Suite / Bottom Navigation Bar** with 4 dedicated primary destinations:
-1. **Tasks (`tab_tasks`)**: Current comprehensive task list, filters, due date grouping, and calendar view.
-2. **Workflows (`tab_workflows`)**: Switchable views between **Eisenhower Matrix (2×2)** and **Kanban Board**.
-3. **Habits (`tab_habits`)**: Daily recurring routines, streak counters, check-in controls, and weekly consistency rings.
-4. **Achievements & Stats (`tab_stats`)**: Productivity XP level progress, unlockable achievement badges, Pomodoro focus history, and completion metrics.
+### 1. Android 6.0 Marshmallow (API 23) — Fully Supported & Verified
+- `minSdk` is configured to **23**.
+- Builds successfully and executes all Room, Material 3, and Coroutines operations.
+- Covers over 99.5% of active Android devices globally.
 
----
-
-## Phase 1: Smart Natural Language Quick-Add Parser (Todoist-Style)
-
-### Objectives
-Enable rapid task capture by parsing dates, times, priority levels, and lists directly from user typing without forcing manual picker clicks.
-
-### Key Capabilities
-- **Date & Time Token Detection**:
-  - Keywords: `today`, `tomorrow`, `tonight`, `next monday`, `in 3 days`, `friday`.
-  - Specific dates: `oct 24`, `10/24`, `24th`.
-  - Times: `at 3pm`, `at 15:30`, `9am`, `morning` (9:00 AM), `evening` (6:00 PM).
-- **Priority Syntax**:
-  - `!high` or `!p1` -> High Priority (Red badge).
-  - `!med` or `!p2` -> Medium Priority (Amber badge).
-  - `!low` or `!p3` -> Low Priority (Blue badge).
-- **List Target Syntax**:
-  - `#Work`, `#Personal`, `#Shopping` matches existing lists or suggests list assignment.
-- **Interactive Parsing Preview**:
-  - As the user types in `AddTaskBottomSheet` or Quick Add, detected tokens are highlighted and converted into clickable chip pills beneath the input field.
-  - Tapping an extracted chip allows quick manual override or removal.
+### 2. Android 5.0 / 5.1 Lollipop (API 21 / 22) — Compatibility Analysis
+- When compiling with `minSdk = 21`, Android Gradle Plugin reports:
+  `uses-sdk:minSdkVersion 21 cannot be smaller than version 23 declared in library [androidx.core:core-ktx:1.18.0]`
+- Google has deprecated Android 5.x across all recent AndroidX releases (`core-ktx >= 1.12.0`, `lifecycle >= 2.8.0`, Compose BOM).
+- Consequently, **Android 6.0 (API 23)** represents the maximum possible backward compatibility reachable on modern Android architecture without downgrading and losing critical Compose UI features.
 
 ---
 
-## Phase 2: Habit Tracking with Daily Routines & Streaks (TickTick / Habitica Style)
+## Navigation & UI Layout Architecture
 
-### Objectives
-Bridge task management with daily self-improvement and recurring routine tracking.
+### 1. Top Bar Isolation
+- **Tasks Tab**: Displays `TasksTopBar` with search bar, list selector menu, view filters (Starred, Completed, Repeating, Calendar), list chips, sort, auto-clear, and batch selection actions.
+- **Workflows Tab**: Clean `CenterAlignedTopAppBar` titled "Workflows", followed by the Eisenhower Matrix / Kanban Board mode selector.
+- **Habits Tab**: Clean `CenterAlignedTopAppBar` titled "Habits", followed by streak summary cards and habit check-in rows.
+- **Badges Tab**: Clean `CenterAlignedTopAppBar` titled "Badges & Stats", followed by the XP level progress card and unlocked achievements grid.
 
-### Data Layer (`com.example.data`)
-- **`Habit` Entity**:
-  - `id: Long` (Auto-generated primary key)
-  - `title: String`
-  - `description: String?`
-  - `frequency: HabitFrequency` (`DAILY`, `WEEKDAYS`, `WEEKENDS`, `CUSTOM_DAYS`)
-  - `targetDaysOfWeek: List<Int>` (e.g., `[1, 2, 3, 4, 5]`)
-  - `color: Long` (M3 color accent)
-  - `icon: String` (Routine icon: fitness, water, reading, code, meditation, study)
-  - `targetTimesPerDay: Int` (e.g., 1 for yes/no check, or 3 for 3x daily)
-  - `createdAt: Long`
-  - `isArchived: Boolean`
-- **`HabitLog` Entity**:
-  - `id: Long`
-  - `habitId: Long` (Foreign key to Habit)
-  - `dateEpochDay: Long` (Standardized epoch day)
-  - `count: Int` (Times completed on this date)
-  - `completedAt: Long`
-- **`HabitDao`**:
-  - Stream all active habits with their 7-day completion logs.
-  - Increment habit check-in, undo check-in, calculate current streak and best streak.
+### 2. Bottom Navigation Bar Single-Level Alignment
+- **Equal Heights & Vertical Level**: By setting `alwaysShowLabel = true` on every `NavigationBarItem`, Compose keeps the active indicator pill and icon at identical Y coordinates across all 4 items.
+- **Centered Text**: `textAlign = TextAlign.Center` and `Modifier.fillMaxWidth()` prevent text from shifting left or wrapping into multiple lines.
+- **Single-Word Labels**:
+  - Tab 1: `Tasks`
+  - Tab 2: `Workflows`
+  - Tab 3: `Habits`
+  - Tab 4: `Badges`
 
-### UI & UX Experience
-- **Daily Routine Deck**:
-  - Quick circular check-in toggle button with smooth spring scale animation and haptic pulse.
-  - Current streak counter with flame indicator (e.g., `🔥 14 days`).
-  - 7-day mini heatmap dots showing completion status for the past week.
-- **Habit Creator Dialog**:
-  - Frequency selection, reminder time, icon picker, and routine goal setting.
-
----
-
-## Phase 3: Eisenhower Matrix 2×2 Decision Grid
-
-### Objectives
-Help users prioritize what to execute immediately versus what to schedule or eliminate, based on the classic urgency-importance framework.
-
-### Matrix Quadrants
-1. **Q1: Do First (Urgent & Important)**: Tasks due today/overdue with High priority.
-2. **Q2: Schedule (Important, Not Urgent)**: Tasks with High/Medium priority due later or with no immediate deadline.
-3. **Q3: Delegate / Quick Win (Urgent, Not Important)**: Tasks due today/tomorrow with Normal/Low priority.
-4. **Q4: Don't Do / Backlog (Neither)**: Tasks with Low priority and no urgent due date.
-
-### Interaction & Customization
-- **Quadrant Grid**:
-  - Clean 4-card M3 grid layout with distinct themed container tones and quadrant counters.
-  - Expand any quadrant to full view or collapse into a 2×2 split.
-- **Drag or Move Action**:
-  - Quick action menu on each task item to instantly assign to another quadrant (automatically re-calibrating its priority and due date).
-- **Direct Add**:
-  - Tapping `+` within any quadrant immediately creates a task pre-configured with that quadrant's urgency and importance values.
-
----
-
-## Phase 4: Visual Kanban Board View
-
-### Objectives
-Provide an agile, workflow-oriented column view where tasks can be moved across progress stages.
-
-### Workflow Stages
-- **Default Board Columns**:
-  - **To Do**: Open tasks pending start.
-  - **In Progress**: Tasks actively being worked on (or linked to an ongoing Pomodoro session).
-  - **Completed**: Tasks finished today or recently.
-- **Alternative List-Based Board Mode**:
-  - Switch board columns to represent user lists (e.g., *Personal*, *Work*, *Projects*) for side-by-side management.
-- **Board UX**:
-  - Horizontally swipeable column cards with column counters.
-  - Quick move arrows (`-> Next Stage`, `<- Prev Stage`) and smooth status toggling.
-  - Inline card action to start a Pomodoro timer directly on any Kanban card.
-
----
-
-## Phase 5: Gamified Achievement Badges & Productivity Levels
-
-### Objectives
-Reward consistency and turn daily productivity into an engaging, gamified journey.
-
-### Gamification Engine (`com.example.data.gamification`)
-- **Experience Points (XP)**:
-  - Completing a task: `+15 XP` (Bonus `+10 XP` for High Priority).
-  - Completing a Subtask: `+5 XP`.
-  - Finishing a 25m Pomodoro Focus Session: `+25 XP`.
-  - Checking in a daily habit: `+20 XP`.
-  - Maintaining a 3-day / 7-day streak: `+50 XP / +150 XP` bonus.
-- **Productivity Levels**:
-  - Level 1: *Novice Planner* (0 - 100 XP)
-  - Level 2: *Focus Apprentice* (101 - 300 XP)
-  - Level 3: *Task Strategist* (301 - 650 XP)
-  - Level 4: *Momentum Master* (651 - 1,200 XP)
-  - Level 5+: *Grandmaster of Flow* (1,201+ XP)
-- **Badges & Trophies**:
-  - **Early Bird**: Complete a task before 9:00 AM.
-  - **Deep Diver**: Complete 4+ Pomodoro focus sessions in a day.
-  - **Streak Igniter**: Maintain a 7-day streak in tasks or habits.
-  - **Centurion**: Complete 100 total lifetime tasks.
-  - **Zen Master**: Clear all pending tasks in your primary list.
-  - **Multi-Task Finisher**: Complete all subtasks of a complex task.
-
-### Achievements Showcase UI
-- Level card with animated progress bar showing current XP and XP needed for next level.
-- Grid of earned badges (colored, glowing) and locked badges (with progress requirements).
-- Delightful celebration banner/toast when leveling up or unlocking a new badge.
-
----
-
-## Phased Implementation Sequence
-
-| Phase | Milestone | Description |
-|---|---|---|
-| **Phase 1** | **Navigation & Shell** | Add M3 Bottom Navigation Bar (`Tasks`, `Workflows`, `Habits`, `Stats & Badges`). |
-| **Phase 2** | **Smart Parser** | Implement `NaturalLanguageTaskParser` with preview chips in task creation. |
-| **Phase 3** | **Habit Engine** | Room entities (`Habit`, `HabitLog`), Habit DAO, and Habits Tab with streak rings. |
-| **Phase 4** | **Workflows Tab** | 2×2 Eisenhower Matrix view and Kanban Board column view with switching tab. |
-| **Phase 5** | **Gamification** | XP engine, levels, achievement badges, and Stats/Achievements screen. |
-
----
-
-## User Review & Feedback Focus
-Before starting implementation:
-1. **Default Tab**: Would you prefer the app to always start on the **Tasks** tab, or remember the last opened tab?
-2. **Workflows Selection**: In the new Workflows tab, is having a top segmented button to toggle between **Eisenhower Matrix** and **Kanban Board** your preferred UX?
-
-*Click **Proceed** to start Phase 1.*
+### 3. Creation Actions & Floating Action Buttons
+- **Tasks Screen**: Dedicated `ExtendedFloatingActionButton` ("New task") in the bottom-right corner.
+- **Habits Screen**:
+  - When no habits exist: Clean center-card "Create First Habit" action button.
+  - When habits exist: Bottom-right FAB ("New habit").
+- **Workflows & Badges**: No extraneous task creation FAB in the corner.
