@@ -72,13 +72,32 @@ data class HabitWithLogs(
         logs.map { it.dateString }.toSet()
     }
 
+    val currentStreak: Int by lazy {
+        calculateCurrentStreak()
+    }
+
+    val longestStreak: Int by lazy {
+        calculateLongestStreak()
+    }
+
+    val isDoneToday: Boolean by lazy {
+        isCompletedOn(getTodayDateString())
+    }
+
+    val weekCompletionList: List<Pair<String, Boolean>> by lazy {
+        calculateWeekCompletion()
+    }
+
     fun isCompletedOn(dateString: String): Boolean {
         return completedDateStrings.contains(dateString)
     }
 
     fun isCompletedToday(): Boolean {
-        val todayStr = getTodayDateString()
-        return isCompletedOn(todayStr)
+        return isDoneToday
+    }
+
+    fun getWeekCompletion(): List<Pair<String, Boolean>> {
+        return weekCompletionList
     }
 
     /**
@@ -102,11 +121,13 @@ data class HabitWithLogs(
             }
         }
 
-        while (true) {
+        var iterations = 0
+        while (iterations < 10000) {
             val dateStr = dateFormat.format(cal.time)
             if (completedDateStrings.contains(dateStr)) {
                 streak++
                 cal.add(Calendar.DAY_OF_YEAR, -1)
+                iterations++
             } else {
                 break
             }
@@ -130,13 +151,13 @@ data class HabitWithLogs(
                 val d1 = dateFormat.parse(sortedDates[i])
                 val d2 = dateFormat.parse(sortedDates[i + 1])
                 if (d1 != null && d2 != null) {
-                    val diff = (d2.time - d1.time) / (1000 * 60 * 60 * 24)
-                    if (diff == 1L) {
+                    val diffDays = Math.round((d2.time - d1.time).toDouble() / (1000.0 * 60 * 60 * 24)).toLong()
+                    if (diffDays == 1L) {
                         currentStreak++
                         if (currentStreak > maxStreak) {
                             maxStreak = currentStreak
                         }
-                    } else if (diff > 1L) {
+                    } else if (diffDays > 1L) {
                         currentStreak = 1
                     }
                 }
@@ -144,13 +165,13 @@ data class HabitWithLogs(
                 // Ignore parse errors
             }
         }
-        return maxStreak
+        return maxStreak.coerceAtLeast(calculateCurrentStreak())
     }
 
     /**
      * Returns an array of 7 booleans representing Monday through Sunday for current week.
      */
-    fun getWeekCompletion(): List<Pair<String, Boolean>> {
+    private fun calculateWeekCompletion(): List<Pair<String, Boolean>> {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val dayLabelFormat = SimpleDateFormat("EEE", Locale.US)
         val cal = Calendar.getInstance()
@@ -172,6 +193,82 @@ data class HabitWithLogs(
         fun getTodayDateString(): String {
             val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
             return dateFormat.format(Date())
+        }
+
+        /**
+         * Calculates the master streak for a collection of habits.
+         * The top streak only advances if ALL habits on the page are completed for that day.
+         * Returns Pair(masterStreakCount, isAllCompletedToday)
+         */
+        fun calculateAllHabitsStreak(habits: List<HabitWithLogs>): Pair<Int, Boolean> {
+            if (habits.isEmpty()) return Pair(0, false)
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val cal = Calendar.getInstance()
+            val todayStr = dateFormat.format(cal.time)
+
+            val allCompletedToday = habits.all { it.isCompletedOn(todayStr) }
+            var streak = 0
+
+            if (allCompletedToday) {
+                streak++
+                cal.add(Calendar.DAY_OF_YEAR, -1)
+            } else {
+                cal.add(Calendar.DAY_OF_YEAR, -1)
+                val yesterdayStr = dateFormat.format(cal.time)
+                val allCompletedYesterday = habits.all { it.isCompletedOn(yesterdayStr) }
+                if (!allCompletedYesterday) {
+                    return Pair(0, false)
+                }
+            }
+
+            var iterations = 0
+            while (iterations < 10000) {
+                val dateStr = dateFormat.format(cal.time)
+                if (habits.all { it.isCompletedOn(dateStr) }) {
+                    streak++
+                    cal.add(Calendar.DAY_OF_YEAR, -1)
+                    iterations++
+                } else {
+                    break
+                }
+            }
+            return Pair(streak, allCompletedToday)
+        }
+
+        /**
+         * Calculates the all-time record streak where ALL habits on the page were completed.
+         */
+        fun calculateAllHabitsRecordStreak(habits: List<HabitWithLogs>): Int {
+            if (habits.isEmpty()) return 0
+            val allCompletedSets = habits.map { it.completedDateStrings }
+            val commonDates = allCompletedSets.reduce { acc, set -> acc.intersect(set) }
+                .toList()
+                .sorted()
+            if (commonDates.isEmpty()) return 0
+
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            var maxStreak = 1
+            var currentStreak = 1
+
+            for (i in 0 until commonDates.size - 1) {
+                try {
+                    val d1 = dateFormat.parse(commonDates[i])
+                    val d2 = dateFormat.parse(commonDates[i + 1])
+                    if (d1 != null && d2 != null) {
+                        val diffDays = Math.round((d2.time - d1.time).toDouble() / (1000.0 * 60 * 60 * 24)).toLong()
+                        if (diffDays == 1L) {
+                            currentStreak++
+                            if (currentStreak > maxStreak) {
+                                maxStreak = currentStreak
+                            }
+                        } else if (diffDays > 1L) {
+                            currentStreak = 1
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+            val (currentMasterStreak, _) = calculateAllHabitsStreak(habits)
+            return maxStreak.coerceAtLeast(currentMasterStreak)
         }
     }
 }

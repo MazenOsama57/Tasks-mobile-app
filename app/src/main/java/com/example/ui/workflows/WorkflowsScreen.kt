@@ -159,13 +159,24 @@ private fun EisenhowerMatrixView(
     onMoveQuadrant: (Task, EisenhowerQuadrant) -> Unit,
     onQuickAdd: (EisenhowerQuadrant) -> Unit
 ) {
-    // Only classify active/uncompleted tasks in the matrix
-    val activeTasks = remember(tasks) { tasks.filter { !it.task.isCompleted } }
-
-    val q1Tasks = remember(activeTasks) { activeTasks.filter { EisenhowerQuadrant.classify(it.task) == EisenhowerQuadrant.DO_FIRST } }
-    val q2Tasks = remember(activeTasks) { activeTasks.filter { EisenhowerQuadrant.classify(it.task) == EisenhowerQuadrant.SCHEDULE } }
-    val q3Tasks = remember(activeTasks) { activeTasks.filter { EisenhowerQuadrant.classify(it.task) == EisenhowerQuadrant.DELEGATE } }
-    val q4Tasks = remember(activeTasks) { activeTasks.filter { EisenhowerQuadrant.classify(it.task) == EisenhowerQuadrant.ELIMINATE } }
+    // Single-pass partition for active tasks into the 4 quadrants
+    val (q1Tasks, q2Tasks, q3Tasks, q4Tasks) = remember(tasks) {
+        val q1 = mutableListOf<TaskWithSubtasks>()
+        val q2 = mutableListOf<TaskWithSubtasks>()
+        val q3 = mutableListOf<TaskWithSubtasks>()
+        val q4 = mutableListOf<TaskWithSubtasks>()
+        for (item in tasks) {
+            if (!item.task.isCompleted) {
+                when (EisenhowerQuadrant.classify(item.task)) {
+                    EisenhowerQuadrant.DO_FIRST -> q1.add(item)
+                    EisenhowerQuadrant.SCHEDULE -> q2.add(item)
+                    EisenhowerQuadrant.DELEGATE -> q3.add(item)
+                    EisenhowerQuadrant.ELIMINATE -> q4.add(item)
+                }
+            }
+        }
+        listOf(q1, q2, q3, q4)
+    }
 
     LazyColumn(
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 80.dp),
@@ -421,14 +432,18 @@ private fun KanbanBoardView(
     onStartFocusSession: (TaskWithSubtasks) -> Unit,
     onQuickAdd: (KanbanColumn) -> Unit
 ) {
-    val todoTasks = remember(tasks, activeFocusTaskId) {
-        tasks.filter { KanbanColumn.classify(it, activeFocusTaskId) == KanbanColumn.TODO }
-    }
-    val inProgressTasks = remember(tasks, activeFocusTaskId) {
-        tasks.filter { KanbanColumn.classify(it, activeFocusTaskId) == KanbanColumn.IN_PROGRESS }
-    }
-    val doneTasks = remember(tasks, activeFocusTaskId) {
-        tasks.filter { KanbanColumn.classify(it, activeFocusTaskId) == KanbanColumn.DONE }
+    val (todoTasks, inProgressTasks, doneTasks) = remember(tasks, activeFocusTaskId) {
+        val todo = mutableListOf<TaskWithSubtasks>()
+        val inProgress = mutableListOf<TaskWithSubtasks>()
+        val done = mutableListOf<TaskWithSubtasks>()
+        for (item in tasks) {
+            when (KanbanColumn.classify(item, activeFocusTaskId)) {
+                KanbanColumn.TODO -> todo.add(item)
+                KanbanColumn.IN_PROGRESS -> inProgress.add(item)
+                KanbanColumn.DONE -> done.add(item)
+            }
+        }
+        Triple(todo, inProgress, done)
     }
 
     LazyRow(

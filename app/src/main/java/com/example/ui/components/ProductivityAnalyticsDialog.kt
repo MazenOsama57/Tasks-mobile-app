@@ -63,6 +63,7 @@ fun ProductivityAnalyticsDialog(
     stats: ProductivityStats,
     onDismiss: () -> Unit,
     onStartFocusSession: () -> Unit = {},
+    onOpenStreakCalendar: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
@@ -122,6 +123,7 @@ fun ProductivityAnalyticsDialog(
 
                 // Streak Banner Card
                 Surface(
+                    onClick = onOpenStreakCalendar,
                     shape = RoundedCornerShape(24.dp),
                     color = if (isDark) Color(0xFF2E1708) else Color(0xFFFFF7ED),
                     border = BorderStroke(1.5.dp, Color(0xFFF97316).copy(alpha = 0.5f)),
@@ -172,12 +174,28 @@ fun ProductivityAnalyticsDialog(
 
                             Text(
                                 text = if (stats.currentStreakDays > 0) {
-                                    "Keep the flame burning! Complete tasks daily to increase your streak."
+                                    "Keep the flame burning! Tap to view active & lazy days calendar."
                                 } else {
-                                    "Complete a task today to ignite your completion streak!"
+                                    "Complete a task today to ignite streak! Tap to view calendar."
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isDark) Color(0xFFFFEDD5).copy(alpha = 0.85f) else Color(0xFF7C2D12)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFF97316).copy(alpha = 0.15f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarMonth,
+                                contentDescription = "Open Streak Calendar",
+                                tint = Color(0xFFF97316),
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .size(24.dp)
                             )
                         }
                     }

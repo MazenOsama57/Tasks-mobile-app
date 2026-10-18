@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Repeat
@@ -67,10 +68,12 @@ fun TasksScreen(
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val pomodoroState by viewModel.pomodoroState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Habit creation/editing state
     var isAddEditHabitDialogOpen by remember { mutableStateOf(false) }
+    var isHabitsCalendarOpen by remember { mutableStateOf(false) }
     var habitToEdit by remember { mutableStateOf<com.example.data.model.Habit?>(null) }
 
     // Android 13+ Notification Permission Launcher
@@ -187,6 +190,17 @@ fun TasksScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { isHabitsCalendarOpen = true },
+                                modifier = Modifier.testTag("habits_top_bar_calendar_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CalendarMonth,
+                                    contentDescription = "Streak Calendar"
+                                )
+                            }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface
@@ -323,9 +337,9 @@ fun TasksScreen(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    if (uiState.pomodoroTimerState.isRunning) {
-                        val mins = uiState.pomodoroTimerState.secondsRemaining / 60
-                        val secs = uiState.pomodoroTimerState.secondsRemaining % 60
+                    if (pomodoroState.isRunning) {
+                        val mins = pomodoroState.secondsRemaining / 60
+                        val secs = pomodoroState.secondsRemaining % 60
                         Surface(
                             onClick = { viewModel.openFocusTimer() },
                             shape = RoundedCornerShape(20.dp),
@@ -417,7 +431,7 @@ fun TasksScreen(
                         lists = uiState.lists,
                         selectedListId = uiState.selectedListId,
                         onSelectList = { viewModel.selectList(it) },
-                        activeFocusTaskId = uiState.pomodoroTimerState.boundTask?.task?.id,
+                        activeFocusTaskId = pomodoroState.boundTask?.task?.id,
                         onTaskClick = { viewModel.openTaskDetail(it) },
                         onToggleTaskComplete = { task ->
                             val taskWithSub = uiState.allTasks.find { it.task.id == task.id }
@@ -446,6 +460,9 @@ fun TasksScreen(
                         habits = uiState.habits,
                         onToggleHabitToday = { id, completed ->
                             viewModel.toggleHabitToday(id, completed)
+                        },
+                        onToggleHabitDate = { id, dateStr, completed ->
+                            viewModel.toggleHabitDate(id, dateStr, completed)
                         },
                         onAddHabitClick = {
                             habitToEdit = null
@@ -1221,7 +1238,7 @@ fun TasksScreen(
     // Pomodoro Focus Timer Dialog (Background-persistent)
     if (uiState.isFocusTimerOpen) {
         PomodoroTimerDialog(
-            timerState = uiState.pomodoroTimerState,
+            timerState = pomodoroState,
             activeTasks = uiState.activeTasks,
             onStart = { viewModel.startPomodoroTimer() },
             onPause = { viewModel.pausePomodoroTimer() },
@@ -1235,9 +1252,9 @@ fun TasksScreen(
             onCompleteEarly = { elapsedMinutes ->
                 viewModel.completeFocusSession(
                     durationMinutes = elapsedMinutes,
-                    sessionType = uiState.pomodoroTimerState.sessionType,
-                    boundTask = uiState.pomodoroTimerState.boundTask,
-                    autoMarkTaskComplete = uiState.pomodoroTimerState.autoMarkComplete
+                    sessionType = pomodoroState.sessionType,
+                    boundTask = pomodoroState.boundTask,
+                    autoMarkTaskComplete = pomodoroState.autoMarkComplete
                 )
                 viewModel.resetPomodoroTimer()
             },
@@ -1255,7 +1272,23 @@ fun TasksScreen(
             onStartFocusSession = {
                 viewModel.closeAnalyticsDialog()
                 viewModel.openFocusTimer()
+            },
+            onOpenStreakCalendar = {
+                viewModel.closeAnalyticsDialog()
+                isHabitsCalendarOpen = true
             }
+        )
+    }
+
+    // Overall / Master Habits Streak Calendar Dialog
+    if (isHabitsCalendarOpen) {
+        com.example.ui.habits.HabitStreakCalendarDialog(
+            habitWithLogs = null,
+            allHabits = uiState.habits,
+            onToggleHabitDate = { habitId, dateString, isDone ->
+                viewModel.toggleHabitDate(habitId, dateString, isDone)
+            },
+            onDismiss = { isHabitsCalendarOpen = false }
         )
     }
 

@@ -41,9 +41,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val appSettings by viewModel.settings.collectAsStateWithLifecycle()
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                MyApplicationTheme(settings = uiState.appSettings) {
+                MyApplicationTheme(settings = appSettings) {
                     Surface(modifier = Modifier.fillMaxSize()) {
                         TasksScreen(viewModel = viewModel)
                     }

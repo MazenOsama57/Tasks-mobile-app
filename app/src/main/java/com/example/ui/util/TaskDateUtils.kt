@@ -3,98 +3,149 @@ package com.example.ui.util
 import com.example.data.model.RecurrenceFrequency
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 object TaskDateUtils {
-    fun formatDueDate(dueDateMillis: Long?, hasTime: Boolean = false): String {
-        if (dueDateMillis == null) return ""
 
-        val taskCal = Calendar.getInstance().apply { timeInMillis = dueDateMillis }
-        val nowCal = Calendar.getInstance()
+    @Volatile
+    private var lastCacheCheckMillis: Long = 0L
+    @Volatile
+    private var cachedStartOfToday: Long = 0L
+    @Volatile
+    private var cachedEndOfToday: Long = 0L
+    @Volatile
+    private var cachedStartOfTomorrow: Long = 0L
+    @Volatile
+    private var cachedEndOfTomorrow: Long = 0L
+    @Volatile
+    private var cachedStartOfYesterday: Long = 0L
+    @Volatile
+    private var cachedEndOfYesterday: Long = 0L
+    @Volatile
+    private var cachedCurrentYear: Int = 0
 
-        val isToday = isSameDay(taskCal, nowCal)
+    // High-performance caches to prevent object churn during scrolling and page switching
+    private val formattedDateCache = ConcurrentHashMap<Long, String>()
+    private val formattedDateTimeCache = ConcurrentHashMap<Long, String>()
+    private val initialOccurrenceCache = ConcurrentHashMap<String, Long>()
 
-        val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-        val isTomorrow = isSameDay(taskCal, tomorrowCal)
-
-        val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-        val isYesterday = isSameDay(taskCal, yesterdayCal)
-
-        val isSameYear = taskCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR)
-
-        val dateStr = when {
-            isToday -> "Today"
-            isTomorrow -> "Tomorrow"
-            isYesterday -> "Yesterday"
-            isSameYear -> SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(taskCal.time)
-            else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(taskCal.time)
-        }
-
-        return if (hasTime) {
-            val timeStr = SimpleDateFormat("h:mm a", Locale.getDefault()).format(taskCal.time)
-            "$dateStr, $timeStr"
-        } else {
-            dateStr
+    private fun ensureTimeBoundaries() {
+        val now = System.currentTimeMillis()
+        if (now < cachedStartOfToday || now > cachedEndOfToday || now - lastCacheCheckMillis > 30_000L) {
+            synchronized(this) {
+                if (now < cachedStartOfToday || now > cachedEndOfToday || now - lastCacheCheckMillis > 30_000L) {
+                    val cal = Calendar.getInstance().apply {
+                        timeInMillis = now
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    val todayStart = cal.timeInMillis
+                    val dayMs = 86_400_000L
+                    cachedStartOfToday = todayStart
+                    cachedEndOfToday = todayStart + dayMs - 1L
+                    cachedStartOfTomorrow = todayStart + dayMs
+                    cachedEndOfTomorrow = todayStart + 2 * dayMs - 1L
+                    cachedStartOfYesterday = todayStart - dayMs
+                    cachedEndOfYesterday = todayStart - 1L
+                    cachedCurrentYear = cal.get(Calendar.YEAR)
+                    lastCacheCheckMillis = now
+                    formattedDateCache.clear()
+                    formattedDateTimeCache.clear()
+                    initialOccurrenceCache.clear()
+                }
+            }
         }
     }
 
-    fun isOverdue(dueDateMillis: Long?): Boolean {
-        if (dueDateMillis == null) return false
-        val todayStart = Calendar.getInstance().apply {
+    fun getStartOfTodayMillis(): Long {
+        ensureTimeBoundaries()
+        return cachedStartOfToday
+    }
+
+    fun getEndOfTodayMillis(): Long {
+        ensureTimeBoundaries()
+        return cachedEndOfToday
+    }
+
+    fun toStartOfDayMillis(millis: Long): Long {
+        ensureTimeBoundaries()
+        // Fast path for today, tomorrow, yesterday
+        if (millis in cachedStartOfToday..cachedEndOfToday) return cachedStartOfToday
+        if (millis in cachedStartOfTomorrow..cachedEndOfTomorrow) return cachedStartOfTomorrow
+        if (millis in cachedStartOfYesterday..cachedEndOfYesterday) return cachedStartOfYesterday
+
+        return Calendar.getInstance().apply {
+            timeInMillis = millis
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
-        return dueDateMillis < todayStart
+    }
+
+    fun formatDueDate(dueDateMillis: Long?, hasTime: Boolean = false): String {
+        if (dueDateMillis == null) return ""
+        ensureTimeBoundaries()
+
+        val cache = if (hasTime) formattedDateTimeCache else formattedDateCache
+        val cached = cache[dueDateMillis]
+        if (cached != null) return cached
+
+        val taskCal = Calendar.getInstance().apply { timeInMillis = dueDateMillis }
+
+        val dateStr = when {
+            dueDateMillis in cachedStartOfToday..cachedEndOfToday -> "Today"
+            dueDateMillis in cachedStartOfTomorrow..cachedEndOfTomorrow -> "Tomorrow"
+            dueDateMillis in cachedStartOfYesterday..cachedEndOfYesterday -> "Yesterday"
+            taskCal.get(Calendar.YEAR) == cachedCurrentYear -> SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(taskCal.time)
+            else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(taskCal.time)
+        }
+
+        val result = if (hasTime) {
+            val timeStr = SimpleDateFormat("h:mm a", Locale.getDefault()).format(taskCal.time)
+            "$dateStr, $timeStr"
+        } else {
+            dateStr
+        }
+
+        cache[dueDateMillis] = result
+        return result
+    }
+
+    fun isOverdue(dueDateMillis: Long?): Boolean {
+        if (dueDateMillis == null) return false
+        ensureTimeBoundaries()
+        return dueDateMillis < cachedStartOfToday
     }
 
     fun isDueToday(dueDateMillis: Long?): Boolean {
         if (dueDateMillis == null) return false
-        val taskCal = Calendar.getInstance().apply { timeInMillis = dueDateMillis }
-        val nowCal = Calendar.getInstance()
-        return isSameDay(taskCal, nowCal)
+        ensureTimeBoundaries()
+        return dueDateMillis in cachedStartOfToday..cachedEndOfToday
     }
 
     fun isDueTomorrow(dueDateMillis: Long?): Boolean {
         if (dueDateMillis == null) return false
-        val taskCal = Calendar.getInstance().apply { timeInMillis = dueDateMillis }
-        val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-        return isSameDay(taskCal, tomorrowCal)
+        ensureTimeBoundaries()
+        return dueDateMillis in cachedStartOfTomorrow..cachedEndOfTomorrow
     }
 
     fun isFutureDate(dueDateMillis: Long?): Boolean {
         if (dueDateMillis == null) return false
-        val endOfToday = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.timeInMillis
-        return dueDateMillis > endOfToday
-    }
-
-    private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
-        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+        ensureTimeBoundaries()
+        return dueDateMillis > cachedEndOfToday
     }
 
     fun getTodayMillis(): Long {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 18)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
+        ensureTimeBoundaries()
+        return cachedStartOfToday + (18 * 3600 * 1000L) // 18:00 today
     }
 
     fun getTomorrowMillis(): Long {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        cal.set(Calendar.HOUR_OF_DAY, 9)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
+        ensureTimeBoundaries()
+        return cachedStartOfTomorrow + (9 * 3600 * 1000L) // 09:00 tomorrow
     }
 
     fun getNextWeekMillis(): Long {
@@ -191,39 +242,45 @@ object TaskDateUtils {
     /**
      * Determines the initial occurrence date for a newly created recurring task.
      * If today matches the recurring pattern, today is chosen; otherwise the earliest
-     * upcoming matching date is chosen.
+     * upcoming matching date is chosen. Caches results to prevent repeated 366-day loops.
      */
     fun computeInitialOccurrenceDate(
         frequency: RecurrenceFrequency,
         daysOfWeek: String = "",
         daysOfMonth: String = ""
     ): Long {
+        ensureTimeBoundaries()
+        val cacheKey = "${frequency.name}_${daysOfWeek}_${daysOfMonth}_$cachedStartOfToday"
+        initialOccurrenceCache[cacheKey]?.let { return it }
+
         val nowCal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 18)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+            timeInMillis = cachedStartOfToday + (18 * 3600 * 1000L)
         }
-        when (frequency) {
-            RecurrenceFrequency.NONE -> return nowCal.timeInMillis
-            RecurrenceFrequency.DAILY -> return nowCal.timeInMillis
+        val computed = when (frequency) {
+            RecurrenceFrequency.NONE -> nowCal.timeInMillis
+            RecurrenceFrequency.DAILY -> nowCal.timeInMillis
             RecurrenceFrequency.WEEKLY -> {
                 val selectedDays = daysOfWeek.split(",")
                     .mapNotNull { it.trim().toIntOrNull() }
                     .filter { it in 1..7 }
                 if (selectedDays.isNotEmpty()) {
                     if (selectedDays.contains(nowCal.get(Calendar.DAY_OF_WEEK))) {
-                        return nowCal.timeInMillis
-                    }
-                    val testCal = Calendar.getInstance().apply { timeInMillis = nowCal.timeInMillis }
-                    for (i in 1..14) {
-                        testCal.add(Calendar.DAY_OF_YEAR, 1)
-                        if (selectedDays.contains(testCal.get(Calendar.DAY_OF_WEEK))) {
-                            return testCal.timeInMillis
+                        nowCal.timeInMillis
+                    } else {
+                        val testCal = Calendar.getInstance().apply { timeInMillis = nowCal.timeInMillis }
+                        var foundTime = nowCal.timeInMillis
+                        for (i in 1..14) {
+                            testCal.add(Calendar.DAY_OF_YEAR, 1)
+                            if (selectedDays.contains(testCal.get(Calendar.DAY_OF_WEEK))) {
+                                foundTime = testCal.timeInMillis
+                                break
+                            }
                         }
+                        foundTime
                     }
+                } else {
+                    nowCal.timeInMillis
                 }
-                return nowCal.timeInMillis
             }
             RecurrenceFrequency.MONTHLY -> {
                 val selectedMonthDays = daysOfMonth.split(",")
@@ -232,21 +289,29 @@ object TaskDateUtils {
                 if (selectedMonthDays.isNotEmpty()) {
                     val currentDay = nowCal.get(Calendar.DAY_OF_MONTH)
                     if (selectedMonthDays.contains(currentDay)) {
-                        return nowCal.timeInMillis
-                    }
-                    val testCal = Calendar.getInstance().apply { timeInMillis = nowCal.timeInMillis }
-                    for (i in 1..366) {
-                        testCal.add(Calendar.DAY_OF_YEAR, 1)
-                        val maxDay = testCal.getActualMaximum(Calendar.DAY_OF_MONTH)
-                        val day = testCal.get(Calendar.DAY_OF_MONTH)
-                        if (selectedMonthDays.contains(day) || (selectedMonthDays.any { it > maxDay } && day == maxDay)) {
-                            return testCal.timeInMillis
+                        nowCal.timeInMillis
+                    } else {
+                        val testCal = Calendar.getInstance().apply { timeInMillis = nowCal.timeInMillis }
+                        var foundTime = nowCal.timeInMillis
+                        for (i in 1..366) {
+                            testCal.add(Calendar.DAY_OF_YEAR, 1)
+                            val maxDay = testCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                            val day = testCal.get(Calendar.DAY_OF_MONTH)
+                            if (selectedMonthDays.contains(day) || (selectedMonthDays.any { it > maxDay } && day == maxDay)) {
+                                foundTime = testCal.timeInMillis
+                                break
+                            }
                         }
+                        foundTime
                     }
+                } else {
+                    nowCal.timeInMillis
                 }
-                return nowCal.timeInMillis
             }
-            RecurrenceFrequency.YEARLY -> return nowCal.timeInMillis
+            RecurrenceFrequency.YEARLY -> nowCal.timeInMillis
         }
+
+        initialOccurrenceCache[cacheKey] = computed
+        return computed
     }
 }

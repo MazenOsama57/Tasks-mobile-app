@@ -35,6 +35,9 @@ import com.example.ui.util.HapticFeedbackHelper
 fun HabitsScreen(
     habits: List<HabitWithLogs>,
     onToggleHabitToday: (habitId: Long, isCurrentlyCompleted: Boolean) -> Unit,
+    onToggleHabitDate: (habitId: Long, dateString: String, isCurrentlyCompleted: Boolean) -> Unit = { id, _, c ->
+        onToggleHabitToday(id, c)
+    },
     onAddHabitClick: () -> Unit,
     onEditHabit: (Habit) -> Unit,
     onDeleteHabit: (Habit) -> Unit,
@@ -46,7 +49,17 @@ fun HabitsScreen(
     val completedTodayCount = habits.count { it.isCompletedToday() }
     val progressFraction = if (totalCount > 0) completedTodayCount.toFloat() / totalCount else 0f
 
-    val totalStreak = habits.maxOfOrNull { it.calculateCurrentStreak() } ?: 0
+    var habitForCalendar by remember { mutableStateOf<HabitWithLogs?>(null) }
+    var isOverallCalendarOpen by remember { mutableStateOf(false) }
+
+    // Master All-Habits Streak:
+    // Only counts up if ALL habits on the page are completed for that day.
+    val (masterStreak, allCompletedToday) = remember(habits) {
+        HabitWithLogs.calculateAllHabitsStreak(habits)
+    }
+    val masterRecordStreak = remember(habits) {
+        HabitWithLogs.calculateAllHabitsRecordStreak(habits)
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -59,7 +72,7 @@ fun HabitsScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            // Header: Daily Routines Summary Card
+            // Header: Daily Routines Summary Card with All-Habits Master Streak
             item {
                 Card(
                     shape = RoundedCornerShape(20.dp),
@@ -74,42 +87,88 @@ fun HabitsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Daily Routines",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = { isOverallCalendarOpen = true },
+                                        modifier = Modifier.size(28.dp).testTag("habits_overall_calendar_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.CalendarMonth,
+                                            contentDescription = "Streak Calendar",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    if (allCompletedToday && totalCount > 0) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                            contentColor = Color(0xFF10B981)
+                                        ) {
+                                            Text(
+                                                text = "100% Done",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Daily Routines",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (totalCount == 0) "No habits yet"
-                                    else if (completedTodayCount == totalCount) "🎉 All habits done for today!"
-                                    else "$completedTodayCount of $totalCount completed today",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = when {
+                                        totalCount == 0 -> "No habits yet"
+                                        allCompletedToday -> "🎉 All $totalCount habits completed today!"
+                                        masterStreak > 0 -> "$completedTodayCount of $totalCount completed today • Complete all to reach ${masterStreak + 1}d!"
+                                        else -> "$completedTodayCount of $totalCount completed today • Complete all to start master streak!"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
-                            if (totalStreak > 0) {
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFF97316).copy(alpha = 0.15f),
-                                    contentColor = Color(0xFFEA580C)
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Master All-Habits Streak Indicator: only counts up if all habits on page are completed
+                            Surface(
+                                onClick = { isOverallCalendarOpen = true },
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (masterStreak > 0) Color(0xFFF97316).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (masterStreak > 0) Color(0xFFEA580C) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("master_streak_card")
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    horizontalAlignment = Alignment.End
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             imageVector = Icons.Filled.LocalFireDepartment,
-                                            contentDescription = "Streak",
+                                            contentDescription = "All Habits Master Streak",
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "$totalStreak day streak",
+                                            text = "$masterStreak day streak",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    if (masterRecordStreak > 0) {
+                                        Text(
+                                            text = "Best: ${masterRecordStreak}d",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                         )
                                     }
                                 }
@@ -124,7 +183,7 @@ fun HabitsScreen(
                                     .fillMaxWidth()
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(4.dp)),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = if (allCompletedToday) Color(0xFF10B981) else MaterialTheme.colorScheme.primary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
@@ -178,11 +237,32 @@ fun HabitsScreen(
                             HapticFeedbackHelper.performSelectionToggleHaptic(context, hapticFeedback)
                             onToggleHabitToday(item.habit.id, isCompleted)
                         },
+                        onOpenCalendar = { habitForCalendar = item },
                         onEdit = { onEditHabit(item.habit) },
                         onDelete = { onDeleteHabit(item.habit) }
                     )
                 }
             }
+        }
+
+        // Streak Record Calendar Dialog (for individual habit or overall master streak)
+        if (isOverallCalendarOpen) {
+            HabitStreakCalendarDialog(
+                habitWithLogs = null,
+                allHabits = habits,
+                onToggleHabitDate = onToggleHabitDate,
+                onDismiss = { isOverallCalendarOpen = false }
+            )
+        }
+
+        if (habitForCalendar != null) {
+            val current = habits.find { it.habit.id == habitForCalendar?.habit?.id } ?: habitForCalendar
+            HabitStreakCalendarDialog(
+                habitWithLogs = current,
+                allHabits = habits,
+                onToggleHabitDate = onToggleHabitDate,
+                onDismiss = { habitForCalendar = null }
+            )
         }
     }
 }
@@ -191,14 +271,17 @@ fun HabitsScreen(
 private fun HabitCardItem(
     habitWithLogs: HabitWithLogs,
     onToggleToday: (isCompleted: Boolean) -> Unit,
+    onOpenCalendar: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val habit = habitWithLogs.habit
-    val isCompletedToday = habitWithLogs.isCompletedToday()
-    val streak = habitWithLogs.calculateCurrentStreak()
-    val weekCompletion = remember(habitWithLogs.logs) { habitWithLogs.getWeekCompletion() }
+    val isCompletedToday = habitWithLogs.isDoneToday
+    val streak = habitWithLogs.currentStreak
+    val recordStreak = habitWithLogs.longestStreak
+    val totalCheckIns = habitWithLogs.logs.size
+    val weekCompletion = habitWithLogs.weekCompletionList
     val habitColor = Color(habit.colorHex)
 
     var showMenu by remember { mutableStateOf(false) }
@@ -230,7 +313,7 @@ private fun HabitCardItem(
                 // Habit Icon Avatar
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(habitColor.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center
@@ -245,7 +328,7 @@ private fun HabitCardItem(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Title and Frequency
+                // Title and Individual Streak Record
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = habit.title,
@@ -255,20 +338,83 @@ private fun HabitCardItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = habit.frequency.label,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (streak > 0) {
-                            Text(
-                                text = " • 🔥 $streak day streak",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFEA580C)
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Individual Habit Streak Record (Current Streak + Best Record)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            onClick = onOpenCalendar,
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (streak > 0) Color(0xFFF97316).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (streak > 0) Color(0xFFEA580C) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("habit_streak_pill_${habit.id}")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocalFireDepartment,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "$streak d streak",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        if (recordStreak > 0) {
+                            Surface(
+                                onClick = onOpenCalendar,
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFEAB308).copy(alpha = 0.15f),
+                                contentColor = Color(0xFFB45309),
+                                modifier = Modifier.testTag("habit_record_pill_${habit.id}")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.EmojiEvents,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "Best: ${recordStreak}d",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onOpenCalendar,
+                            modifier = Modifier.size(24.dp).testTag("habit_calendar_btn_${habit.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarMonth,
+                                contentDescription = "Streak Calendar",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp)
                             )
                         }
+
+                        Text(
+                            text = "• $totalCheckIns total",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
                     }
                 }
 

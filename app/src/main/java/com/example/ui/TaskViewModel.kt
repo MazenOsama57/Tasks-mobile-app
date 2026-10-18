@@ -45,6 +45,7 @@ data class TasksUiState(
     val expandedTaskIds: Set<Long> = emptySet(),
     val isAddTaskSheetOpen: Boolean = false,
     val initialDueDateForNewTask: Long? = null,
+    val initialPriorityForNewTask: Priority = Priority.NONE,
     val selectedTaskForDetail: TaskWithSubtasks? = null,
     val isCreateListDialogOpen: Boolean = false,
     val listToRename: TaskList? = null,
@@ -106,6 +107,7 @@ private data class FilterState(
 private data class DialogsState(
     val isAddTaskSheetOpen: Boolean = false,
     val initialDueDateForNewTask: Long? = null,
+    val initialPriorityForNewTask: Priority = Priority.NONE,
     val isCreateListDialogOpen: Boolean = false,
     val listToRename: TaskList? = null,
     val listToDelete: TaskList? = null,
@@ -118,8 +120,6 @@ private data class DialogsState(
     val isBatchSelectionMode: Boolean = false,
     val selectedTaskIdsForBatch: Set<Long> = emptySet(),
     val isFocusTimerOpen: Boolean = false,
-    val taskForFocusSession: TaskWithSubtasks? = null,
-    val pomodoroTimerState: PomodoroTimerState = PomodoroTimerState(),
     val isAnalyticsDialogOpen: Boolean = false,
     val isCalendarView: Boolean = false,
     val selectedCalendarDateMillis: Long = System.currentTimeMillis(),
@@ -174,6 +174,7 @@ class TaskViewModel(
     private val _selectedCalendarDateMillis = MutableStateFlow(System.currentTimeMillis())
     private val _selectedTag = MutableStateFlow<String?>(null)
     private val _initialDueDateForNewTask = MutableStateFlow<Long?>(null)
+    private val _initialPriorityForNewTask = MutableStateFlow(Priority.NONE)
     private val _currentBottomTab = MutableStateFlow(com.example.ui.workflows.AppBottomTab.TASKS)
 
     init {
@@ -230,15 +231,8 @@ class TaskViewModel(
     val dailyProgressFlow: Flow<DailyCoachFeedback> = metricsFlow.map { it.first }
 
     private fun computeDailyCoachFeedback(allTasksList: List<TaskWithSubtasks>): DailyCoachFeedback {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val startOfToday = cal.timeInMillis
-        cal.add(Calendar.DAY_OF_YEAR, 1)
-        val endOfToday = cal.timeInMillis
+        val startOfToday = TaskDateUtils.getStartOfTodayMillis()
+        val endOfToday = TaskDateUtils.getEndOfTodayMillis()
 
         var completedTodayCount = 0
         var activeDueTodayCount = 0
@@ -270,99 +264,67 @@ class TaskViewModel(
         allTasksList: List<TaskWithSubtasks>,
         sessions: List<FocusSession>
     ): com.example.ui.components.ProductivityStats {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val startOfToday = cal.timeInMillis
-        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-
+        val startOfToday = TaskDateUtils.getStartOfTodayMillis()
         val completedTasks = allTasksList.filter { it.task.isCompleted && it.task.completedAt != null }
         val completedTodayCount = completedTasks.count { (it.task.completedAt ?: 0L) >= startOfToday }
 
-        val completionDates = completedTasks
+        // Day numbers calculated with local timezone offset for blazing-fast integer set arithmetic
+        val tzOffset: Long = java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
+        val dayNumbers: Set<Long> = completedTasks
             .mapNotNull { it.task.completedAt }
-            .map { dateFormat.format(java.util.Date(it)) }
+            .map { (it + tzOffset) / 86400000L }
             .toSet()
 
-        var currentStreak = 0
-        val checkCal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val todayStr = dateFormat.format(checkCal.time)
-        checkCal.add(Calendar.DAY_OF_YEAR, -1)
-        val yesterdayStr = dateFormat.format(checkCal.time)
+        val todayDayNumber = (System.currentTimeMillis() + tzOffset) / 86400000L
+        val yesterdayDayNumber = todayDayNumber - 1L
 
-        if (completionDates.contains(todayStr)) {
+        var currentStreak = 0
+        if (dayNumbers.contains(todayDayNumber)) {
             currentStreak = 1
-            val prevCal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                add(Calendar.DAY_OF_YEAR, -1)
-            }
-            while (completionDates.contains(dateFormat.format(prevCal.time))) {
+            var prevDay = todayDayNumber - 1L
+            while (dayNumbers.contains(prevDay)) {
                 currentStreak++
-                prevCal.add(Calendar.DAY_OF_YEAR, -1)
+                prevDay--
             }
-        } else if (completionDates.contains(yesterdayStr)) {
+        } else if (dayNumbers.contains(yesterdayDayNumber)) {
             currentStreak = 1
-            val prevCal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                add(Calendar.DAY_OF_YEAR, -2)
-            }
-            while (completionDates.contains(dateFormat.format(prevCal.time))) {
+            var prevDay = yesterdayDayNumber - 1L
+            while (dayNumbers.contains(prevDay)) {
                 currentStreak++
-                prevCal.add(Calendar.DAY_OF_YEAR, -1)
+                prevDay--
             }
         }
 
         var longestStreak = currentStreak
-        val sortedDates = completionDates.sorted()
+        val sortedDays = dayNumbers.sorted()
         var tempStreak = 0
-        var lastDayCal: Calendar? = null
-        for (dateStr in sortedDates) {
-            val dCal = Calendar.getInstance()
-            try {
-                dCal.time = dateFormat.parse(dateStr) ?: continue
-                if (lastDayCal == null) {
+        var lastDay: Long? = null
+        for (day in sortedDays) {
+            val prev = lastDay
+            if (prev == null) {
+                tempStreak = 1
+            } else {
+                val diff = day - prev
+                if (diff == 1L) {
+                    tempStreak++
+                } else if (diff > 1L) {
                     tempStreak = 1
-                } else {
-                    val diffDays = ((dCal.timeInMillis - lastDayCal.timeInMillis) / 86400000L).toInt()
-                    if (diffDays == 1) {
-                        tempStreak++
-                    } else if (diffDays > 1) {
-                        tempStreak = 1
-                    }
                 }
-                lastDayCal = dCal
-                if (tempStreak > longestStreak) {
-                    longestStreak = tempStreak
-                }
-            } catch (_: Exception) {}
+            }
+            lastDay = day
+            if (tempStreak > longestStreak) {
+                longestStreak = tempStreak
+            }
         }
 
-        val dayFormat = java.text.SimpleDateFormat("EEE", java.util.Locale.getDefault())
+        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
         val weeklyVelocity = (6 downTo 0).map { dayOffset ->
-            val dayCal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-                add(Calendar.DAY_OF_YEAR, -dayOffset)
-            }
-            val dayStart = dayCal.timeInMillis
+            val dayStart = startOfToday - (dayOffset * 86400000L)
             val dayEnd = dayStart + 86400000L - 1L
-            val dayLabel = if (dayOffset == 0) "Today" else dayFormat.format(dayCal.time)
+            val dayLabel = if (dayOffset == 0) "Today" else {
+                val dayOfWeekIndex = (((dayStart + tzOffset) / 86400000L + 4L) % 7L).toInt()
+                dayNames.getOrElse(dayOfWeekIndex) { "Day" }
+            }
             val dayCompleted = completedTasks.count { (it.task.completedAt ?: 0L) in dayStart..dayEnd }
             val dayFocus = sessions
                 .filter { it.completedAt in dayStart..dayEnd }
@@ -429,11 +391,11 @@ class TaskViewModel(
     }
 
     private val dialogsStateFlow: Flow<DialogsState> = combine(
-        combine(_isAddTaskSheetOpen, _initialDueDateForNewTask, _isCreateListDialogOpen, _listToRename) { addTask, initDue, createList, renameList ->
-            listOf(addTask, initDue, createList, renameList)
+        combine(_isAddTaskSheetOpen, _initialDueDateForNewTask, _initialPriorityForNewTask, _isCreateListDialogOpen) { addTask, initDue, initPriority, createList ->
+            listOf(addTask, initDue, initPriority, createList)
         },
-        combine(_listToDelete, _isSortDialogOpen, _isThemeDialogOpen) { deleteList, sortDialog, themeOpen ->
-            Triple(deleteList, sortDialog, themeOpen)
+        combine(_listToRename, _listToDelete, _isSortDialogOpen, _isThemeDialogOpen) { renameList, deleteList, sortDialog, themeOpen ->
+            listOf(renameList, deleteList, sortDialog, themeOpen)
         },
         combine(_isAutoClearDialogOpen, _isMoveTasksDialogOpen, _isReminderDialogOpen, _isSettingsDialogOpen) { autoClear, moveTasks, reminderOpen, settingsOpen ->
             listOf(autoClear, moveTasks, reminderOpen, settingsOpen)
@@ -442,33 +404,37 @@ class TaskViewModel(
             Pair(batchMode, selectedIds)
         },
         combine(
-            combine(_isFocusTimerOpen, _pomodoroState, _isAnalyticsDialogOpen) { focusOpen, pomoState, analyticsOpen ->
-                Triple(focusOpen, pomoState, analyticsOpen)
+            combine(_isFocusTimerOpen, _isAnalyticsDialogOpen) { focusOpen, analyticsOpen ->
+                Pair(focusOpen, analyticsOpen)
             },
             _isCalendarView,
             _selectedCalendarDateMillis,
             _currentBottomTab
-        ) { (focusOpen, pomoState, analyticsOpen), calView, calDate, bottomTab ->
-            listOf(focusOpen, pomoState, analyticsOpen, calView, calDate, bottomTab)
+        ) { (focusOpen, analyticsOpen), calView, calDate, bottomTab ->
+            listOf(focusOpen, analyticsOpen, calView, calDate, bottomTab)
         }
-    ) { addSheetData, (deleteList, sortDialog, themeOpen), settingsList, (batchMode, selectedIds), focusAndCalList ->
+    ) { addSheetData, renameAndSortList, settingsList, (batchMode, selectedIds), focusAndCalList ->
         val addTask = addSheetData[0] as Boolean
         val initDue = addSheetData[1] as Long?
-        val createList = addSheetData[2] as Boolean
-        val renameList = addSheetData[3] as TaskList?
+        val initPriority = addSheetData[2] as Priority
+        val createList = addSheetData[3] as Boolean
+        val renameList = renameAndSortList[0] as TaskList?
+        val deleteList = renameAndSortList[1] as TaskList?
+        val sortDialog = renameAndSortList[2] as Boolean
+        val themeOpen = renameAndSortList[3] as Boolean
         val autoClear = settingsList[0] as Boolean
         val moveTasks = settingsList[1] as Boolean
         val reminderOpen = settingsList[2] as Boolean
         val settingsOpen = settingsList[3] as Boolean
         val focusOpen = focusAndCalList[0] as Boolean
-        val pomoState = focusAndCalList[1] as PomodoroTimerState
-        val analyticsOpen = focusAndCalList[2] as Boolean
-        val calView = focusAndCalList[3] as Boolean
-        val calDate = focusAndCalList[4] as Long
-        val currentTab = focusAndCalList[5] as com.example.ui.workflows.AppBottomTab
+        val analyticsOpen = focusAndCalList[1] as Boolean
+        val calView = focusAndCalList[2] as Boolean
+        val calDate = focusAndCalList[3] as Long
+        val currentTab = focusAndCalList[4] as com.example.ui.workflows.AppBottomTab
         DialogsState(
             isAddTaskSheetOpen = addTask,
             initialDueDateForNewTask = initDue,
+            initialPriorityForNewTask = initPriority,
             isCreateListDialogOpen = createList,
             listToRename = renameList,
             listToDelete = deleteList,
@@ -481,8 +447,6 @@ class TaskViewModel(
             isBatchSelectionMode = batchMode,
             selectedTaskIdsForBatch = selectedIds,
             isFocusTimerOpen = focusOpen,
-            taskForFocusSession = pomoState.boundTask,
-            pomodoroTimerState = pomoState,
             isAnalyticsDialogOpen = analyticsOpen,
             isCalendarView = calView,
             selectedCalendarDateMillis = calDate,
@@ -600,6 +564,7 @@ class TaskViewModel(
         baseState.copy(
             isAddTaskSheetOpen = dialogs.isAddTaskSheetOpen,
             initialDueDateForNewTask = dialogs.initialDueDateForNewTask,
+            initialPriorityForNewTask = dialogs.initialPriorityForNewTask,
             isCreateListDialogOpen = dialogs.isCreateListDialogOpen,
             listToRename = dialogs.listToRename,
             listToDelete = dialogs.listToDelete,
@@ -612,8 +577,8 @@ class TaskViewModel(
             isBatchSelectionMode = dialogs.isBatchSelectionMode,
             selectedTaskIdsForBatch = dialogs.selectedTaskIdsForBatch,
             isFocusTimerOpen = dialogs.isFocusTimerOpen,
-            taskForFocusSession = dialogs.taskForFocusSession,
-            pomodoroTimerState = dialogs.pomodoroTimerState,
+            taskForFocusSession = _pomodoroState.value.boundTask,
+            pomodoroTimerState = _pomodoroState.value,
             isAnalyticsDialogOpen = dialogs.isAnalyticsDialogOpen,
             isCalendarView = dialogs.isCalendarView,
             selectedCalendarDateMillis = dialogs.selectedCalendarDateMillis,
@@ -1362,6 +1327,12 @@ class TaskViewModel(
         }
     }
 
+    fun toggleHabitDate(habitId: Long, dateString: String, isCurrentlyCompleted: Boolean) {
+        viewModelScope.launch {
+            repository.toggleHabitLog(habitId, dateString, isCurrentlyCompleted)
+        }
+    }
+
     fun insertHabit(habit: Habit) {
         viewModelScope.launch {
             repository.insertHabit(habit)
@@ -1387,24 +1358,24 @@ class TaskViewModel(
                 com.example.ui.workflows.EisenhowerQuadrant.DO_FIRST -> {
                     task.copy(
                         priority = Priority.HIGH,
-                        dueDateMillis = TaskDateUtils.getTodayMillis()
+                        dueDateMillis = task.dueDateMillis ?: TaskDateUtils.getTodayMillis()
                     )
                 }
                 com.example.ui.workflows.EisenhowerQuadrant.SCHEDULE -> {
                     task.copy(
-                        priority = Priority.HIGH,
-                        dueDateMillis = TaskDateUtils.getNextWeekMillis()
+                        priority = Priority.MEDIUM,
+                        dueDateMillis = task.dueDateMillis ?: TaskDateUtils.getNextWeekMillis()
                     )
                 }
                 com.example.ui.workflows.EisenhowerQuadrant.DELEGATE -> {
                     task.copy(
                         priority = Priority.LOW,
-                        dueDateMillis = TaskDateUtils.getTodayMillis()
+                        dueDateMillis = task.dueDateMillis ?: TaskDateUtils.getTodayMillis()
                     )
                 }
                 com.example.ui.workflows.EisenhowerQuadrant.ELIMINATE -> {
                     task.copy(
-                        priority = Priority.LOW,
+                        priority = Priority.NONE,
                         dueDateMillis = null
                     )
                 }
@@ -1441,11 +1412,12 @@ class TaskViewModel(
     fun quickAddTaskToQuadrant(quadrant: com.example.ui.workflows.EisenhowerQuadrant) {
         val (dueMillis, priority) = when (quadrant) {
             com.example.ui.workflows.EisenhowerQuadrant.DO_FIRST -> Pair(TaskDateUtils.getTodayMillis(), Priority.HIGH)
-            com.example.ui.workflows.EisenhowerQuadrant.SCHEDULE -> Pair(TaskDateUtils.getNextWeekMillis(), Priority.HIGH)
+            com.example.ui.workflows.EisenhowerQuadrant.SCHEDULE -> Pair(TaskDateUtils.getNextWeekMillis(), Priority.MEDIUM)
             com.example.ui.workflows.EisenhowerQuadrant.DELEGATE -> Pair(TaskDateUtils.getTodayMillis(), Priority.LOW)
-            com.example.ui.workflows.EisenhowerQuadrant.ELIMINATE -> Pair(null, Priority.LOW)
+            com.example.ui.workflows.EisenhowerQuadrant.ELIMINATE -> Pair(null, Priority.NONE)
         }
         _initialDueDateForNewTask.value = dueMillis
+        _initialPriorityForNewTask.value = priority
         _isAddTaskSheetOpen.value = true
     }
 }

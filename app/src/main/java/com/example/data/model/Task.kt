@@ -56,9 +56,13 @@ data class Task(
     val tags: String = ""
 )
 
+private val tagListCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
+
 fun Task.getTagList(): List<String> {
     if (tags.isBlank()) return emptyList()
-    return tags.split(",")
-        .map { it.trim().removePrefix("#") }
-        .filter { it.isNotEmpty() }
+    return tagListCache.getOrPut(tags) {
+        tags.split(",")
+            .map { it.trim().removePrefix("#") }
+            .filter { it.isNotEmpty() }
+    }
 }

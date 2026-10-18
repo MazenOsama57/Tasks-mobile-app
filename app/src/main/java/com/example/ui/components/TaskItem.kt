@@ -81,10 +81,14 @@ fun TaskItem(
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
 
-    val completedSubtasksCount = subtasks.count { it.isCompleted }
+    val completedSubtasksCount = remember(subtasks) { subtasks.count { it.isCompleted } }
     val totalSubtasksCount = subtasks.size
-    val isOverdue = !isCompleted && TaskDateUtils.isOverdue(task.dueDateMillis)
-    val isFutureRepeating = !isCompleted && task.recurrenceFrequency != RecurrenceFrequency.NONE && TaskDateUtils.isFutureDate(task.dueDateMillis)
+    val isOverdue = remember(task.dueDateMillis, isCompleted) {
+        !isCompleted && TaskDateUtils.isOverdue(task.dueDateMillis)
+    }
+    val isFutureRepeating = remember(task.dueDateMillis, task.recurrenceFrequency, isCompleted) {
+        !isCompleted && task.recurrenceFrequency != RecurrenceFrequency.NONE && TaskDateUtils.isFutureDate(task.dueDateMillis)
+    }
     val isLocked = isLockedForCompletion || isFutureRepeating
 
     var inlineSubtaskText by remember { mutableStateOf("") }
@@ -222,7 +226,9 @@ fun TaskItem(
                         ) {
                             // Due Date Chip
                             if (task.dueDateMillis != null) {
-                                val dateText = TaskDateUtils.formatDueDate(task.dueDateMillis, task.hasTime)
+                                val dateText = remember(task.dueDateMillis, task.hasTime) {
+                                    TaskDateUtils.formatDueDate(task.dueDateMillis, task.hasTime)
+                                }
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = when {
@@ -330,7 +336,7 @@ fun TaskItem(
                             }
 
                             // Tags Chips
-                            val tagList = task.getTagList()
+                            val tagList = remember(task.tags) { task.getTagList() }
                             tagList.forEach { tag ->
                                 Surface(
                                     onClick = { onTagClick?.invoke(tag) },

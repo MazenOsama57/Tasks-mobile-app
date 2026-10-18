@@ -1,6 +1,6 @@
 {
-  "summary": "Updated Implementation Plan documenting Android 6.0 support, technical explanation of Android 5.0 deprecation in modern AndroidX, bottom navigation single-level centered icon/label alignment, elimination of overlapping add buttons, and top bar scoping to the Tasks tab only.",
-  "updatedAt": "2026-10-13T10:05:06.466670499Z",
+  "summary": "Comprehensive Habits Streak Architecture:\n- Individual Habit Streaks: Each habit card independently maintains and displays its own streak record (current streak, all-time best record, and total check-ins count).\n- All-Habits Master Streak: The top banner streak strictly advances ONLY when ALL habits on the page are completed for that day. If any habit is incomplete, the master streak remains pending or resets on missed days.\n- Unit tested and verified with JUnit and Robolectric.",
+  "updatedAt": "2026-10-13T10:27:41.467323397Z",
   "requestFeedback": true,
   "userFacing": true
 }

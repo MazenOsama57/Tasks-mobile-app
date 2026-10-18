@@ -98,14 +98,8 @@ fun CalendarGridView(
         allTasks.forEach { taskWithSubs ->
             val due = taskWithSubs.task.dueDateMillis
             if (due != null) {
-                val cal = Calendar.getInstance().apply {
-                    timeInMillis = due
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }
-                map.getOrPut(cal.timeInMillis) { mutableListOf() }.add(taskWithSubs)
+                val dayStart = TaskDateUtils.toStartOfDayMillis(due)
+                map.getOrPut(dayStart) { mutableListOf() }.add(taskWithSubs)
             }
         }
         map
@@ -113,13 +107,7 @@ fun CalendarGridView(
 
     // Normalized selected date at start of day
     val selectedDayStart = remember(selectedDateMillis) {
-        Calendar.getInstance().apply {
-            timeInMillis = selectedDateMillis
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        TaskDateUtils.toStartOfDayMillis(selectedDateMillis)
     }
 
     val selectedDayTasks = tasksByDay[selectedDayStart] ?: emptyList()

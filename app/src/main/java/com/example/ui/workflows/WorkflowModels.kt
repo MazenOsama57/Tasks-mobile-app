@@ -27,50 +27,40 @@ enum class EisenhowerQuadrant(
 ) {
     DO_FIRST(
         title = "Do First",
-        subtitle = "Urgent & Important",
-        description = "High priority or due soon. Tackle immediately.",
+        subtitle = "High Priority (Urgent & Important)",
+        description = "High-priority tasks. Tackle immediately.",
         primaryColor = Color(0xFFEF4444),
         containerColor = Color(0xFFFEE2E2)
     ),
     SCHEDULE(
         title = "Schedule",
-        subtitle = "Important, Not Urgent",
-        description = "High impact tasks with future deadlines. Plan ahead.",
+        subtitle = "Medium Priority (Important, Plan Ahead)",
+        description = "Medium-priority tasks. Plan ahead and execute with focus.",
         primaryColor = Color(0xFF3B82F6),
         containerColor = Color(0xFFDBEAFE)
     ),
     DELEGATE(
         title = "Delegate",
-        subtitle = "Urgent, Not Important",
-        description = "Immediate tasks with low priority. Automate or finish quickly.",
+        subtitle = "Low Priority (Quick / Hand Off)",
+        description = "Low-priority tasks. Knock out quickly, automate, or delegate.",
         primaryColor = Color(0xFFF59E0B),
         containerColor = Color(0xFFFEF3C7)
     ),
     ELIMINATE(
-        title = "Eliminate / Backlog",
-        subtitle = "Neither Urgent nor Important",
-        description = "Low priority ideas. Drop or defer to someday.",
-        primaryColor = Color(0xFF6B7280),
-        containerColor = Color(0xFFF3F4F6)
+        title = "Backlog & Notes",
+        subtitle = "Non-Important (Self-Added / Backlog)",
+        description = "Non-important tasks, scratchpad ideas, and backlog elements you choose to add.",
+        primaryColor = Color(0xFF8B5CF6),
+        containerColor = Color(0xFFEDE9FE)
     );
 
     companion object {
         fun classify(task: Task): EisenhowerQuadrant {
-            val isUrgent = when {
-                task.dueDateMillis == null -> false
-                TaskDateUtils.isOverdue(task.dueDateMillis) -> true
-                TaskDateUtils.isDueToday(task.dueDateMillis) -> true
-                TaskDateUtils.isDueTomorrow(task.dueDateMillis) -> true
-                else -> false
-            }
-
-            val isImportant = task.priority == Priority.HIGH || task.priority == Priority.MEDIUM || task.isStarred
-
-            return when {
-                isUrgent && isImportant -> DO_FIRST
-                !isUrgent && isImportant -> SCHEDULE
-                isUrgent && !isImportant -> DELEGATE
-                else -> ELIMINATE
+            return when (task.priority) {
+                Priority.HIGH -> DO_FIRST
+                Priority.MEDIUM -> SCHEDULE
+                Priority.LOW -> DELEGATE
+                Priority.NONE -> ELIMINATE
             }
         }
     }
